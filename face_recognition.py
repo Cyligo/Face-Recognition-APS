@@ -1,94 +1,143 @@
 import numpy as np
 import cv2
 import os
+import csv
 
-########## KNN CODE ############
-def distance(v1, v2):
-	# Eucledian 
-	return np.sqrt(((v1-v2)**2).sum())
+def distancia_euclidiana(v1, v2):
+    # Distância entre dois vetores
+    return np.sqrt(((v1-v2)**2).sum())
 
-def knn(train, test, k=5):
-	dist = []
-	
-	for i in range(train.shape[0]):
-		# Get the vector and label
-		ix = train[i, :-1]
-		iy = train[i, -1]
-		# Compute the distance from test point
-		d = distance(test, ix)
-		dist.append([d, iy])
-	# Sort based on distance and get top k
-	dk = sorted(dist, key=lambda x: x[0])[:k]
-	# Retrieve only the labels
-	labels = np.array(dk)[:, -1]
-	
-	# Get frequencies of each label
-	output = np.unique(labels, return_counts=True)
-	# Find max frequency and corresponding label
-	index = np.argmax(output[1])
-	return output[0][index]
-################################
+def knn(treino, teste, k=5):
+    distancias = []
 
-cap = cv2.VideoCapture(0)
-face_cascade = cv2.CascadeClassifier("haarcascade_frontalface_alt.xml")
+    for i in range(treino.shape[0]):
+        # Vetor de características (ix) e rótulo (iy)
+        ix = treino[i, :-1]
+        iy = treino[i, -1]
+        d = distancia_euclidiana(teste, ix)
+        distancias.append([d, iy])
 
-dataset_path = "./face_dataset/"
+    # Ordena e obtém os k vizinhos mais próximos
+    dk = sorted(distancias, key=lambda x: x[0])[:k]
+    # Recupera os rótulos
+    rotulos = np.array(dk)[:, -1]
 
-face_data = []
-labels = []
-class_id = 0
-names = {}
+    # Encontra o rótulo com a maior frequência
+    saida = np.unique(rotulos, return_counts=True)
+    indice_max = np.argmax(saida[1])
+    return saida[0][indice_max]
+
+# Inicializa a captura de vídeo
+captura = cv2.VideoCapture(0)
+# Carrega o classificador Haar Cascade
+detector_face = cv2.CascadeClassifier("haarcascade_frontalface_alt.xml")
+
+# Caminho para o dataset
+caminho_dataset = "./face_dataset/"
+
+dados_face = []  # Vetores de características
+rotulos_face = []  # Rótulos (ID da pessoa)
+id_classe = 0      # ID único para cada pessoa
+nomes = {}         # Mapeamento de IDs para nomes
 
 
-# Dataset prepration
-for fx in os.listdir(dataset_path):
-	if fx.endswith('.npy'):
-		names[class_id] = fx[:-4]
-		data_item = np.load(dataset_path + fx)
-		face_data.append(data_item)
+# Preparação do Dataset
+for arquivo_dados in os.listdir(caminho_dataset):
+    if arquivo_dados.endswith('.npy'):
+        # Mapeia ID da classe ao nome
+        nomes[id_classe] = arquivo_dados[:-4]
+        dados_item = np.load(caminho_dataset + arquivo_dados)
+        dados_face.append(dados_item)
 
-		target = class_id * np.ones((data_item.shape[0],))
-		class_id += 1
-		labels.append(target)
+        # Cria vetor de rótulos com o ID da classe atual
+        alvo = id_classe * np.ones((dados_item.shape[0],))
+        id_classe += 1
+        rotulos_face.append(alvo)
 
-face_dataset = np.concatenate(face_data, axis=0)
-face_labels = np.concatenate(labels, axis=0).reshape((-1, 1))
-print(face_labels.shape)
-print(face_dataset.shape)
+# Concatena todos os dados de face e rótulos
+dataset_completo = np.concatenate(dados_face, axis=0)
+vetor_rotulos = np.concatenate(rotulos_face, axis=0).reshape((-1, 1))
 
-trainset = np.concatenate((face_dataset, face_labels), axis=1)
-print(trainset.shape)
+# Cria o conjunto de treinamento
+conjunto_treino = np.concatenate((dataset_completo, vetor_rotulos), axis=1)
 
-font = cv2.FONT_HERSHEY_SIMPLEX
+# Carrega permissões do arquivo CSV
+permissoes = {}
+try:
+    with open('usuarios.csv', mode='r', encoding='utf-8') as f:
+        leitor = csv.DictReader(f)
+        for linha in leitor:
+            nome = linha['nome']
+            nivel = int(linha['nivel'])
+            permissoes[nome] = nivel
 
+    print("✅ Permissões carregadas com sucesso:")
+    print(permissoes)
+
+except FileNotFoundError:
+    print("🚨 ERRO: Arquivo 'usuarios.csv' não encontrado!")
+    print("         Execute o script de registro ou crie o arquivo manualmente.")
+except Exception as e:
+    print(f"🚨 ERRO ao ler o arquivo CSV: {e}")
+
+
+# Fonte para o texto
+fonte = cv2.FONT_HERSHEY_SIMPLEX
+
+# Loop principal de vídeo
 while True:
-	ret, frame = cap.read()
-	if ret == False:
-		continue
-	# Convert frame to grayscale
-	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    sucesso, quadro = captura.read()
+    if not sucesso:
+        continue
 
-	# Detect multi faces in the image
-	faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+    # Converte para escala de cinza
+    gray = cv2.cvtColor(quadro, cv2.COLOR_BGR2GRAY)
 
-	for face in faces:
-		x, y, w, h = face
+    # Detecta faces
+    faces = detector_face.detectMultiScale(gray, 1.3, 5)
 
-		# Get the face ROI
-		offset = 5
-		face_section = frame[y-offset:y+h+offset, x-offset:x+w+offset]
-		face_section = cv2.resize(face_section, (100, 100))
+    for face in faces:
+        x, y, l, a = face
 
-		out = knn(trainset, face_section.flatten())
+        # Recorta a Região de Interesse (ROI) da face
+        margem = 5
+        secao_face = quadro[y-margem:y+a+margem, x-margem:x+l+margem]
+        secao_face_redim = cv2.resize(secao_face, (100, 100))
 
-		# Draw rectangle in the original image
-		cv2.putText(frame, names[int(out)],(x,y-10), cv2.FONT_HERSHEY_SIMPLEX, 1,(255,0,0),2,cv2.LINE_AA)
-		cv2.rectangle(frame, (x,y), (x+w,y+h), (255,255,255), 2)
+        # Classifica a face usando KNN
+        resultado = knn(conjunto_treino, secao_face_redim.flatten())
 
-	cv2.imshow("Faces", frame)
+        # Identifica o nome da pessoa
+        nome_predito = nomes[int(resultado)]
 
-	if cv2.waitKey(1) & 0xFF == ord('q'):
-		break
+        # Busca o nível de permissão no dicionário
+        nivel_permissao = permissoes.get(nome_predito, 0) # Retorna 0 se não encontrar
 
-cap.release()
+        # Define a mensagem e a cor com base no nível
+        if nivel_permissao == 1:
+            texto_status = "Nivel 1: Acesso Basico"
+            cor = (0, 255, 255) # Amarelo
+        elif nivel_permissao == 2:
+            texto_status = "Nivel 2: Acesso Intermediario"
+            cor = (255, 165, 0) # Laranja
+        elif nivel_permissao == 3:
+            texto_status = "Nivel 3: Acesso Maximo"
+            cor = (0, 255, 0)   # Verde
+        else:
+            texto_status = "ACESSO NEGADO"
+            cor = (0, 0, 255)   # Vermelho
+
+        # Desenha as informações na tela
+        cv2.putText(quadro, nome_predito, (x, y-10), fonte, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(quadro, texto_status, (x, y+a+20), fonte, 0.7, cor, 2, cv2.LINE_AA)
+        cv2.rectangle(quadro, (x, y), (x+l, y+a), cor, 2)
+
+    # Exibe o frame
+    cv2.imshow("Faces", quadro)
+
+    # Sai ao pressionar 'q'
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+captura.release()
 cv2.destroyAllWindows()
