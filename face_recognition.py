@@ -81,10 +81,8 @@ except Exception as e:
     print(f"🚨 ERRO ao ler o arquivo CSV: {e}")
 
 
-# Fonte para o texto
 fonte = cv2.FONT_HERSHEY_SIMPLEX
 
-# Loop principal de vídeo
 while True:
     sucesso, quadro = captura.read()
     if not sucesso:
@@ -113,8 +111,10 @@ while True:
         # Busca o nível de permissão no dicionário
         nivel_permissao = permissoes.get(nome_predito, 0) # Retorna 0 se não encontrar
 
-        # Define a mensagem e a cor com base no nível
-        if nivel_permissao == 1:
+        if nivel_permissao == 0:
+            texto_status = "ACESSO NEGADO"
+            cor = (0, 0, 255)   # Vermelho
+        elif nivel_permissao == 1:
             texto_status = "Nivel 1: Acesso Basico"
             cor = (0, 255, 255) # Amarelo
         elif nivel_permissao == 2:
@@ -123,16 +123,11 @@ while True:
         elif nivel_permissao == 3:
             texto_status = "Nivel 3: Acesso Maximo"
             cor = (0, 255, 0)   # Verde
-        else:
-            texto_status = "ACESSO NEGADO"
-            cor = (0, 0, 255)   # Vermelho
 
-        # Desenha as informações na tela
         cv2.putText(quadro, nome_predito, (x, y-10), fonte, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
         cv2.putText(quadro, texto_status, (x, y+a+20), fonte, 0.7, cor, 2, cv2.LINE_AA)
         cv2.rectangle(quadro, (x, y), (x+l, y+a), cor, 2)
 
-    # Exibe o frame
     cv2.imshow("Faces", quadro)
 
     # Sai ao pressionar 'q'
