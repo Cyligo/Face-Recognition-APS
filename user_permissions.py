@@ -45,7 +45,7 @@ def cadastro_usuario():
             break
 
         if verificar_usuario_existe(nome, arquivo_csv):
-            print(f"[ERRO: Usuário '{nome}' já existe no arquivo. Não foi salvo.")
+            print(f"[ERRO] Usuário '{nome}' já existe no arquivo. Não foi salvo.")
             continue
 
         while True:
@@ -53,7 +53,7 @@ def cadastro_usuario():
             if nivel in ['1', '2', '3']:
                 break
             else:
-                print("ERRO: Nível inválido. Por favor, digite 1, 2 ou 3.")
+                print("[ERRO] Nível inválido. Por favor, digite 1, 2 ou 3.")
 
         try:
             with open(arquivo_csv, mode='a', newline='', encoding='utf-8') as f:
