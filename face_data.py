@@ -15,7 +15,7 @@ nome_pessoa = input("Digite novamente seu nome: ")
 if nome_pessoa == "":
     print("[ERRO] Campo vazio, tente novamente.")
     cadastro_usuario()
-nome_arquivo = nome_pessoa.replace(" ", "_")
+nome_arquivo = nome_pessoa.replace(" ", "_").capitalize()
 
 
 while True:

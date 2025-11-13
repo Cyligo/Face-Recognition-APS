@@ -39,6 +39,7 @@ def cadastro_usuario():
         print("\n--- Novo Registro ---")
 
         nome = input("Digite o nome da pessoa (ou 's' para sair): ")
+        nome = nome.capitalize()
         nome = nome.replace(" ", "_")
 
         if nome.lower() == 's' or nome == "":
