@@ -1,8 +1,6 @@
-import user_permissions
 import cv2
 import numpy as np
 import os
-
 from user_permissions import cadastro_usuario
 
 captura_video = cv2.VideoCapture(0)
